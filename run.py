@@ -9,12 +9,13 @@ from shapely.errors import ShapelyDeprecationWarning
 
 from hdx.api.configuration import Configuration
 from hdx.data.dataset import Dataset
+from hdx.data.hdxobject import HDXError
 from hdx.facades.keyword_arguments import facade
 from hdx.utilities.downloader import Download
 from hdx.utilities.easy_logging import setup_logging
 from hdx.utilities.path import temp_dir
 
-from .health_facilities import HealthFacilities
+from health_facilities import HealthFacilities
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -65,7 +66,7 @@ def main(
                 subnational_json[level]["ADM_REF"] = subnational_json[level][f"ADM{level}_REF"]
             subnational_json = subnational_json.values()
             subnational_json = concat(subnational_json)
-            subnational_json["Population"] = None
+            subnational_json["Health_Facilities"] = None
 
             if not countries:
                 countries = list(set(subnational_json["alpha_3"]))
@@ -77,8 +78,18 @@ def main(
                 subnational_json,
                 temp_folder,
             )
-            health_fac.run(countries)
-            health_fac.update_hdx_resource(configuration["inputs"]["dataset"])
+            updated_countries = health_fac.run(countries)
+            if len(updated_countries) > 0:
+                updated_data, resource = health_fac.update_hdx_resource(configuration["inputs"]["dataset"],
+                                                                        updated_countries)
+
+                # update hdx
+                updated_data.to_csv(join(temp_folder, "subnational_health_facilities.csv"), index=False)
+                resource.set_file_to_upload(join(temp_folder, "subnational_health_facilities.csv"))
+                try:
+                    resource.update_in_hdx()
+                except HDXError:
+                    logger.exception("Could not update resource")
 
 
 if __name__ == "__main__":
