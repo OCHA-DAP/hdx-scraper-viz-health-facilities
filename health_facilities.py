@@ -2,7 +2,7 @@ import logging
 from geopandas import read_file
 from glob import glob
 from os.path import join
-from pandas import concat, DataFrame, read_csv
+from pandas import concat, DataFrame, merge, read_csv
 from zipfile import ZipFile, BadZipFile
 
 from hdx.data.dataset import Dataset
@@ -26,7 +26,7 @@ class HealthFacilities:
             logger.error(f"{iso}: Could not find dataset")
             return None
         health_resource = [r for r in dataset.get_resources() if r.get_file_type() == "shp" and
-                           "point" in r["name"]]
+                           "points" in r["name"]]
         if len(health_resource) == 0:
             logger.error(f"{iso}: Could not find resource")
             return None
@@ -45,7 +45,7 @@ class HealthFacilities:
             logger.error(f"{iso}: Could not unzip file")
             return None
 
-        out_files = glob(join(temp_dir, "**", "*.shp}"), recursive=True)
+        out_files = glob(join(temp_dir, "**", "*.shp"), recursive=True)
         if len(out_files) == 0:
             logger.error(f"{iso}: Did not find a shapefile in the zip")
             return None
@@ -54,7 +54,8 @@ class HealthFacilities:
 
         return lyr
 
-    def run(self, countries):
+    def summarize_data(self, countries):
+        summarized_data = DataFrame()
         updated_countries = dict()
         for iso in countries:
 
@@ -74,24 +75,16 @@ class HealthFacilities:
                     self.boundaries.loc[(self.boundaries["alpha_3"] == iso) &
                                         (self.boundaries["ADM_LEVEL"] == level)]
                 )
-                join_lyr = DataFrame(join_lyr)
-                join_lyr = join_lyr.groupby(f"ADM_PCODE").size()
-                for pcode in join_lyr.index:
-                    hfs = join_lyr[pcode]
-                    self.boundaries.loc[(self.boundaries["ADM_PCODE"] == pcode) &
-                                        (self.boundaries["ADM_LEVEL"] == level),
-                                        "Health_Facilities"] = hfs
+                join_lyr = join_lyr.groupby("ADM_PCODE").size()
+                join_lyr = join_lyr.to_frame(name="Health_Facilities").reset_index()
+                summarized_data = concat([summarized_data, join_lyr])
 
                 if iso not in updated_countries[level]:
                     updated_countries[level].append(iso)
 
-                self.boundaries.loc[(self.boundaries["alpha_3"] == iso) &
-                                    (self.boundaries["ADM_LEVEL"] == level) &
-                                    self.boundaries["Health_Facilities"].isna()] = 0
+            return summarized_data, updated_countries
 
-            return updated_countries
-
-    def update_hdx_resource(self, dataset_name, updated_countries):
+    def update_hdx_resource(self, dataset_name, summarized_data, updated_countries):
         dataset = Dataset.read_from_hdx(dataset_name)
         if not dataset:
             logger.error("Could not find overall health facility dataset")
@@ -106,6 +99,8 @@ class HealthFacilities:
         health_data = read_csv(health_data)
 
         updated_data = self.boundaries.drop(columns="geometry")
+        updated_data = merge(updated_data, summarized_data, on="ADM_PCODE")
+        updated_data.loc[updated_data["Health_Facilities"].isna()] = 0
         for level in updated_countries:
             health_data.drop(health_data[(health_data["alpha_3"].isin(updated_countries[level])) &
                                          (health_data["ADM_LEVEL"] == level)].index, inplace=True)

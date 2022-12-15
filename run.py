@@ -54,19 +54,16 @@ def main(
                 level = resource["name"][11]
                 _, resource_file = resource.download(folder=temp_folder)
                 subnational_json[level] = read_file(resource_file)
-
-            # merge boundaries, adding required fields
-            for level in subnational_json:
-                add_levels = [i for i in range(1, 4) if not i == level]
+                add_levels = [i for i in range(int(level), 4) if not i == int(level)]
                 for add_level in add_levels:
                     subnational_json[level][f"ADM{add_level}_PCODE"] = None
                     subnational_json[level][f"ADM{add_level}_REF"] = None
                 subnational_json[level]["ADM_LEVEL"] = int(level)
                 subnational_json[level]["ADM_PCODE"] = subnational_json[level][f"ADM{level}_PCODE"]
                 subnational_json[level]["ADM_REF"] = subnational_json[level][f"ADM{level}_REF"]
+
             subnational_json = subnational_json.values()
             subnational_json = concat(subnational_json)
-            subnational_json["Health_Facilities"] = None
 
             if not countries:
                 countries = list(set(subnational_json["alpha_3"]))
@@ -78,18 +75,17 @@ def main(
                 subnational_json,
                 temp_folder,
             )
-            updated_countries = health_fac.run(countries)
-            if len(updated_countries) > 0:
-                updated_data, resource = health_fac.update_hdx_resource(configuration["inputs"]["dataset"],
-                                                                        updated_countries)
+            summarized_data, updated_countries = health_fac.summarize_data(countries)
+            updated_data, resource = health_fac.update_hdx_resource(configuration["inputs"]["dataset"],
+                                                                    summarized_data, updated_countries)
 
-                # update hdx
-                updated_data.to_csv(join(temp_folder, "subnational_health_facilities.csv"), index=False)
-                resource.set_file_to_upload(join(temp_folder, "subnational_health_facilities.csv"))
-                try:
-                    resource.update_in_hdx()
-                except HDXError:
-                    logger.exception("Could not update resource")
+            # update hdx
+            updated_data.to_csv(join(temp_folder, "subnational_health_facilities.csv"), index=False)
+            resource.set_file_to_upload(join(temp_folder, "subnational_health_facilities.csv"))
+            try:
+                resource.update_in_hdx()
+            except HDXError:
+                logger.exception("Could not update resource")
 
 
 if __name__ == "__main__":
