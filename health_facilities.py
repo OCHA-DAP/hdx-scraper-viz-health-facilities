@@ -13,8 +13,7 @@ logger = logging.getLogger()
 
 
 class HealthFacilities:
-    def __init__(self, configuration, downloader, subnational_json, temp_folder):
-        self.downloader = downloader
+    def __init__(self, configuration, subnational_json, temp_folder):
         self.boundaries = subnational_json
         self.temp_folder = temp_folder
         self.exceptions = {"dataset": configuration["inputs"].get("dataset_exceptions", {}),
