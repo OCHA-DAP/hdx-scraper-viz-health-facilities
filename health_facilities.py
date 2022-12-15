@@ -9,11 +9,6 @@ from hdx.data.dataset import Dataset
 from hdx.utilities.downloader import DownloadError
 from hdx.utilities.uuid import get_uuid
 
-from scrapers.utilities.hdx_functions import (
-    update_csv_resource,
-    upload_updated_resource,
-)
-
 logger = logging.getLogger()
 
 
