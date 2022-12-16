@@ -1,4 +1,4 @@
-inputs:
+hdx_inputs:
   dataset: "health-facility-counts-for-data-explorers"
   dataset_exceptions:
     NER: "hotosm_niger_health_facilities"

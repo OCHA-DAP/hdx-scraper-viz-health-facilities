@@ -16,8 +16,7 @@ class HealthFacilities:
     def __init__(self, configuration, subnational_json, temp_folder):
         self.boundaries = subnational_json
         self.temp_folder = temp_folder
-        self.exceptions = {"dataset": configuration["inputs"].get("dataset_exceptions", {}),
-                           "resource": configuration["inputs"].get("resource_exceptions", {})}
+        self.exceptions = configuration["hdx_inputs"].get("dataset_exceptions", {})
 
     def find_read_resource(self, iso, dataset_name):
         dataset = Dataset.read_from_hdx(dataset_name)
@@ -58,7 +57,7 @@ class HealthFacilities:
         updated_countries = dict()
         for iso in countries:
 
-            dataset_name = self.exceptions["dataset"].get(iso, f"hotosm_{iso.lower()}_health_facilities")
+            dataset_name = self.exceptions.get(iso, f"hotosm_{iso.lower()}_health_facilities")
             health_shp_lyr = self.find_read_resource(iso, dataset_name)
 
             if isinstance(health_shp_lyr, type(None)):

@@ -46,7 +46,7 @@ def main(
         # download subnational boundaries
         logger.info("Downloading subnational boundaries")
         subnational_json = dict()
-        dataset = Dataset.read_from_hdx(configuration["inputs"]["boundaries"])
+        dataset = Dataset.read_from_hdx(configuration["hdx_inputs"]["boundaries"])
         for resource in dataset.get_resources():
             if "polbnda_adm" not in resource["name"]:
                 continue
@@ -74,7 +74,7 @@ def main(
             temp_folder,
         )
         summarized_data, updated_countries = health_fac.summarize_data(countries)
-        updated_data, resource = health_fac.update_hdx_resource(configuration["inputs"]["dataset"],
+        updated_data, resource = health_fac.update_hdx_resource(configuration["hdx_inputs"]["dataset"],
                                                                 summarized_data, updated_countries)
 
         # update hdx
